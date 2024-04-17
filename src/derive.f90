@@ -14,7 +14,7 @@ subroutine derx_00(tx,ux,rx,sx,ffx,fsx,fwx,nx,ny,nz,npaire,lind)
 
   implicit none
 
-  integer :: nx,ny,nz,npaire,i,j,k
+  integer :: nx,ny,nz,npaire,i,j,k,teste
   real(mytype), dimension(nx,ny,nz) :: tx,ux,rx
   real(mytype), dimension(ny,nz):: sx
   real(mytype), dimension(nx):: ffx,fsx,fwx
