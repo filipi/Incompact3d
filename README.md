@@ -66,3 +66,6 @@ $ git clone --branch v4.1 git@github.com:xcompact3d/Incompact3d.git
 
 Releases are available via git tags, also on the main Github, or via the [Zenodo DOI](https://zenodo.org/badge/latestdoi/127266756) (see top of README page on Github).
 
+### Workshop Laset
+
+At April, 17th 2024 LaSET research group held a local git and GitHub Workshop.
