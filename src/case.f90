@@ -12,7 +12,6 @@ module case
   use tgv
   use cyl
   use hill
-  use dbg_schemes
   use channel
   use mixlayer
   use gravitycur
@@ -357,7 +356,7 @@ contains
     endif
 
     if (iforces.eq.1) then
-       call force(ux,uy,ep)
+       call force(ux,uy,uz,ep)
        call restart_forces(1)
     endif
 
@@ -482,6 +481,8 @@ contains
   !##################################################################
   subroutine momentum_forcing(dux1, duy1, duz1, rho1, ux1, uy1, uz1, phi1)
 
+    use mhd, only: mhd_active,momentum_forcing_mhd
+
     implicit none
 
     real(mytype), intent(in), dimension(xsize(1), xsize(2), xsize(3)) :: ux1, uy1, uz1
@@ -499,6 +500,10 @@ contains
 
     endif
 
+    if(mhd_active) then
+      call momentum_forcing_mhd(dux1(:,:,:,1),duy1(:,:,:,1),duz1(:,:,:,1),ux1,uy1,uz1)
+    endif
+    
   end subroutine momentum_forcing
   !##################################################################
   !##################################################################

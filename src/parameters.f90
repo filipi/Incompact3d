@@ -22,7 +22,6 @@ subroutine parameter(input_i3d)
   use decomp_2d
   use decomp_2d_mpi
   use ibm_param
-  use dbg_schemes, only: sin_prec, cos_prec
 
   use var, only : dphi1
 
@@ -30,7 +29,9 @@ subroutine parameter(input_i3d)
 
   use probes, only : nprobes, setup_probes, flag_all_digits, flag_extra_probes, xyzprobes
   use visu, only : output2D
-  use forces, only : iforces, nvol, xld, xrd, yld, yud!, zld, zrd
+  use forces, only : iforces, nvol, setup_forces
+
+  use mhd, only: mhd_active,mhd_equation,hartmann,stuart,rem
 
   implicit none
 
@@ -47,7 +48,7 @@ subroutine parameter(input_i3d)
        ivisu, ipost, &
        gravx, gravy, gravz, &
        cpg, idir_stream, &
-       ifilter, C_filter, iturbine
+       ifilter, C_filter, iturbine, mhd_active
   NAMELIST /NumOptions/ ifirstder, isecondder, itimescheme, iimplicit, &
        nu0nu, cnu, ipinter
   NAMELIST /InOutParam/ irestart, icheckpoint, ioutput, nvisu, ilist, iprocessing, &
@@ -62,7 +63,6 @@ subroutine parameter(input_i3d)
   NAMELIST /LESModel/ jles, smagcst, smagwalldamp, nSmag, walecst, maxdsmagcst, iconserv
   NAMELIST /Tripping/ itrip,A_tr,xs_tr_tbl,ys_tr_tbl,ts_tr_tbl,x0_tr_tbl
   NAMELIST /ibmstuff/ cex,cey,cez,ra,rai,rao,nobjmax,nraf,nvol,iforces, npif, izap, ianal, imove, thickness, chord, omega ,ubcx,ubcy,ubcz,rads, c_air
-  NAMELIST /ForceCVs/ xld, xrd, yld, yud!, zld, zrd
   NAMELIST /LMN/ dens1, dens2, prandtl, ilmn_bound, ivarcoeff, ilmn_solve_temp, &
        massfrac, mol_weight, imultispecies, primary_species, &
        Fr, ibirman_eos
@@ -72,6 +72,11 @@ subroutine parameter(input_i3d)
   NAMELIST /CASE/ pfront
   NAMELIST/ALMParam/iturboutput,NTurbines,TurbinesPath,NActuatorlines,ActuatorlinesPath,eps_factor,rho_air
   NAMELIST/ADMParam/Ndiscs,ADMcoords,iturboutput,rho_air,T_relax
+  NAMELIST/MHDParam/mhd_equation,hartmann,stuart,rem, &
+     nclxBx1, nclxBxn, nclyBx1, nclyBxn, nclzBx1, nclzBxn, &
+     nclxBy1, nclxByn, nclyBy1, nclyByn, nclzBy1, nclzByn, &
+     nclxBz1, nclxBzn, nclyBz1, nclyBzn, nclzBz1, nclzBzn
+
 
 #ifdef DEBG
   if (nrank == 0) write(*,*) '# parameter start'
@@ -117,8 +122,7 @@ subroutine parameter(input_i3d)
      read(10, nml=ProbesParam); rewind(10)
   endif
   if (iforces.eq.1) then
-     allocate(xld(nvol), xrd(nvol), yld(nvol), yud(nvol))!, zld(nvol), zrd(nvol))
-     read(10, nml=ForceCVs); rewind(10)
+     call setup_forces(10)
   endif
   
   !! Set Scalar BCs same as fluid (may be overridden) [DEFAULT]
@@ -197,6 +201,30 @@ subroutine parameter(input_i3d)
         nclzSn = 0
      endif
   endif
+
+ 
+  if(mhd_active) then
+    read(10, nml=MHDParam); rewind(10) !! read mhd
+    nclxB1(1) = nclxBx1
+    nclxB1(2) = nclxBy1
+    nclxB1(3) = nclxBz1
+    nclxBn(1) = nclxBxn
+    nclxBn(2) = nclxByn
+    nclxBn(3) = nclxBzn
+    nclyB1(1) = nclyBx1
+    nclyB1(2) = nclyBy1
+    nclyB1(3) = nclyBz1
+    nclyBn(1) = nclyBxn
+    nclyBn(2) = nclyByn
+    nclyBn(3) = nclyBzn
+    nclzB1(1) = nclzBx1
+    nclzB1(2) = nclzBy1
+    nclzB1(3) = nclzBz1
+    nclzBn(1) = nclzBxn
+    nclzBn(2) = nclzByn
+    nclzBn(3) = nclzBzn
+   endif
+
   ! !! These are the 'optional'/model parameters
   ! read(10, nml=ScalarParam)
   if(ilesmod==0) then
@@ -305,12 +333,13 @@ subroutine parameter(input_i3d)
         stop
      endif
      if (iscalar.eq.1) xcst_sc = xcst / sc
+
   endif
 
   if (itype==itype_tbl.and.A_tr .gt. zero.and.nrank==0)  write(*,*)  "TBL tripping is active"
 
-  anglex = sin_prec(pi*angle/onehundredeighty)
-  angley = cos_prec(pi*angle/onehundredeighty)
+  anglex = sin(pi*angle/onehundredeighty)
+  angley = cos(pi*angle/onehundredeighty)
   !###########################################################################
   ! Log-output
   !###########################################################################
@@ -570,6 +599,8 @@ subroutine parameter_defaults()
   use visu, only : output2D
   use forces, only : iforces, nvol
 
+  use mhd, only: mhd_active, mhd_equation, rem, stuart, hartmann 
+
   implicit none
 
   integer :: i
@@ -593,6 +624,12 @@ subroutine parameter_defaults()
   itime0 = 0
   t0 = zero
   datapath = './data/'
+
+  mhd_active=.false.
+  mhd_equation=.false.
+  rem = zero
+  stuart = zero
+  hartmann = zero
 
   !! LES stuff
   smagwalldamp=1
